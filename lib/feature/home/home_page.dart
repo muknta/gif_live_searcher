@@ -16,7 +16,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => getIt<HomeCubit>(),
+      create: (context) => getIt<HomeBloc>(),
       child: const _HomeView(),
     );
   }
@@ -48,7 +48,7 @@ class _HomeViewState extends State<_HomeView> {
 
   void onScroll() {
     if (controller.position.maxScrollExtent - controller.position.pixels < 900) {
-      context.read<HomeCubit>().add(const NextPageEvent());
+      context.read<HomeBloc>().add(const NextPageEvent());
     }
   }
 
@@ -58,7 +58,7 @@ class _HomeViewState extends State<_HomeView> {
       body: SafeArea(
         child: GestureDetector(
           onTap: () => FocusScope.of(context).requestFocus(FocusNode()),
-          child: BlocConsumer<HomeCubit, HomeState>(
+          child: BlocConsumer<HomeBloc, HomeState>(
             listener: (context, state) {
               state.maybeWhen(
                 requestFailure: (type, _, __, ___) {
@@ -74,7 +74,7 @@ class _HomeViewState extends State<_HomeView> {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(msg),
                   ));
-                  context.read<HomeCubit>().add(const HandledErrorEvent());
+                  context.read<HomeBloc>().add(const HandledErrorEvent());
                 },
                 orElse: () => null,
               );
@@ -95,7 +95,7 @@ class _HomeViewState extends State<_HomeView> {
                             border: OutlineInputBorder(),
                             hintText: 'Search for ...',
                           ),
-                          onChanged: (query) => context.read<HomeCubit>().add(InputEvent(query)),
+                          onChanged: (query) => context.read<HomeBloc>().add(InputEvent(query)),
                           enabled: state.maybeMap(paginationLoading: (_) => false, orElse: () => true),
                         ),
                       ),

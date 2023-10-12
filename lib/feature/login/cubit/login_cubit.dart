@@ -9,9 +9,10 @@ part 'login_state.dart';
 
 @injectable
 class LoginCubit extends Cubit<LoginState> {
-  LoginCubit(this._sessionService) : super(const LoginState.init());
+  LoginCubit(this._sessionService, this._connectionChecker) : super(const LoginState.init());
 
   final SessionService _sessionService;
+  final InternetConnectionChecker _connectionChecker;
 
   void onContinue(String apiToken) async {
     final token = apiToken.trim();
@@ -33,7 +34,7 @@ class LoginCubit extends Cubit<LoginState> {
   }
 
   Future<void> emitError() async {
-    if (!await InternetConnectionChecker().hasConnection) {
+    if (!await _connectionChecker.hasConnection) {
       emit(const LoginState.failure(type: FailureType.noInternet));
     } else {
       emit(const LoginState.failure(type: FailureType.wrongToken));

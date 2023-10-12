@@ -11,9 +11,12 @@ part 'home_bloc.freezed.dart';
 part 'home_state.dart';
 part 'home_event.dart';
 
+const debounceMillisec = 300;
+
 @injectable
-class HomeCubit extends Bloc<HomeEvent, HomeState> {
-  HomeCubit(this._searcherService) : super(const HomeState.input(query: '', gifs: <GifData>[], offset: 0)) {
+class HomeBloc extends Bloc<HomeEvent, HomeState> {
+  HomeBloc(this._searcherService, this._connectionChecker)
+      : super(const HomeState.input(query: '', gifs: <GifData>[], offset: 0)) {
     on<InputEvent>(
       (event, emit) async {
         try {
@@ -21,13 +24,17 @@ class HomeCubit extends Bloc<HomeEvent, HomeState> {
             query: event.query,
             offset: state.offset,
           );
-          emit(HomeState.input(query: event.query, gifs: response.data, offset: response.pagination.offset));
+          if (response.meta.status >= 200 && response.meta.status < 300) {
+            emit(HomeState.input(query: event.query, gifs: response.data, offset: response.pagination.offset));
+          } else {
+            await _emitError(emit, event.query);
+          }
         } catch (_) {
-          await _emitError(emit);
+          await _emitError(emit, event.query);
         }
       },
       transformer: (events, mapper) {
-        return events.debounceTime(const Duration(milliseconds: 300)).asyncExpand(mapper);
+        return events.debounceTime(const Duration(milliseconds: debounceMillisec)).asyncExpand(mapper);
       },
     );
 
@@ -42,13 +49,17 @@ class HomeCubit extends Bloc<HomeEvent, HomeState> {
             query: state.query,
             offset: state.offset + paginationLimit,
           );
-          emit(HomeState.input(
-            query: state.query,
-            gifs: state.gifs.toList()..addAll(response.data),
-            offset: response.pagination.offset,
-          ));
+          if (response.meta.status >= 200 && response.meta.status < 300) {
+            emit(HomeState.input(
+              query: state.query,
+              gifs: state.gifs.toList()..addAll(response.data),
+              offset: response.pagination.offset,
+            ));
+          } else {
+            await _emitError(emit, state.query);
+          }
         } catch (_) {
-          await _emitError(emit);
+          await _emitError(emit, state.query);
         }
       },
     );
@@ -64,14 +75,14 @@ class HomeCubit extends Bloc<HomeEvent, HomeState> {
   }
 
   final SearcherService _searcherService;
+  final InternetConnectionChecker _connectionChecker;
 
-  Future<void> _emitError(Emitter<HomeState> emit) async {
-    if (!await InternetConnectionChecker().hasConnection) {
-      emit(HomeState.requestFailure(
-          type: FailureType.noInternet, query: state.query, gifs: state.gifs, offset: state.offset));
+  Future<void> _emitError(Emitter<HomeState> emit, String query) async {
+    if (!await _connectionChecker.hasConnection) {
+      emit(
+          HomeState.requestFailure(type: FailureType.noInternet, query: query, gifs: state.gifs, offset: state.offset));
     } else {
-      emit(HomeState.requestFailure(
-          type: FailureType.unknown, query: state.query, gifs: state.gifs, offset: state.offset));
+      emit(HomeState.requestFailure(type: FailureType.unknown, query: query, gifs: state.gifs, offset: state.offset));
     }
   }
 }
